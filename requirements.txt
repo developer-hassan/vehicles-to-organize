@@ -1,0 +1,4 @@
+openpyxl
+pandas
+langchain 
+langchain_groq
