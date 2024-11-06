@@ -310,6 +310,58 @@ def extract_mode_stage(modified_description, model_data, brand_name, family_name
         return modello_a_serie, id_record_model, serie, stage
 
 
+def extract_family_from_model(mod_digits, mod_strings, model_data: pd.DataFrame, extracted_year, extracted_brand):
+    family_name, family_record = None, None
+
+    if not extracted_brand:
+        return family_name, family_record
+
+    # 2. Clean the model data
+    model_data = clean_model_df(model_data=model_data)
+
+    # 3. Filtered the records to get only the ones with extracted brand and family
+    filtered_model_data = model_data[
+        (model_data["Marca"].str.lower() == extracted_brand.lower())
+    ]
+
+    # 4. If single occurrence of filtered data, return the information
+    if len(filtered_model_data) == 1:
+        target_row = filtered_model_data.iloc[0]
+        family_name = target_row["Mod_FamigliaA"]
+        family_record = target_row["Famiglia::ID_Record"]
+
+    # 5. Iterate through the filtered data to get the desired output
+    else:
+        for _, row in filtered_model_data.iterrows():
+            # 5.1. Check if model is within the year range
+            is_model_within_range = __get_model_in_year_range(
+                model_year=extracted_year,
+                start_year=row['AnnoInizioCalcolato'],
+                end_year=row['AnnoFineCalcolato']
+            )
+
+            if is_model_within_range:
+                # 5.2. Check if extracted brand, and extracted mod_b_version are available in mod_famiglia_b
+                mod_famiglia_b = row["Mod_FamigliaB"]
+
+                if any(mod_string.lower() == word for word in mod_famiglia_b.lower().split() for mod_string in mod_strings):
+                    family_name = row["Mod_FamigliaA"]
+                    family_record = row["Famiglia::ID_Record"]
+                    break
+
+                if any(str(mod_digit).lower() in mod_famiglia_b.lower() for mod_digit in mod_digits):
+                    family_name = row["Mod_FamigliaA"]
+                    family_record = row["Famiglia::ID_Record"]
+                    break
+
+                if any(str(mod_digit).lower() == word for word in mod_famiglia_b.lower().split() for mod_digit in mod_digits):
+                    family_name = row["Mod_FamigliaA"]
+                    family_record = row["Famiglia::ID_Record"]
+                    break
+
+    return family_name, family_record
+
+
 def extract_modello_a_serie_and_stage(mod_digits, mod_strings, model_data: pd.DataFrame, extracted_year,
                                       extracted_brand, extracted_family):
     global temp_stored
